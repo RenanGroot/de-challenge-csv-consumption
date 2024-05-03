@@ -5,6 +5,7 @@ start_time = time.time()
 
 import sqlite3
 import re
+import datetime
 # Receive a csv file
 # Read csv file
 # Save file into SQL databaser
@@ -25,7 +26,7 @@ def csv_to_sql(
 
     # Checking if table exists
     if cur.execute("SELECT name FROM sqlite_master").fetchone() is None:
-        cur.execute("""
+        cur.executescript("""
             CREATE TABLE test(
                     id TEXT PRIMARY KEY,
                     region TEXT,
@@ -34,10 +35,19 @@ def csv_to_sql(
                     dest_coord_x REAL,
                     dest_coord_y REAL,
                     datetime TEXT,
-                    datasource TEXT)
+                    datasource TEXT);
+            CREATE TABLE  status(
+                    filename TEXT,
+                    status TEXT,
+                    datetime TEXT
+            );
                     """
                 )
 
+    # Updating status table
+    date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+    cur.execute(f"""INSERT INTO status VALUES("{file}", "Landing_to_Database","{date_status}")""")
+    
     # Opening the file in read mode
     with open(file,mode="r") as f:
         for row in f:
@@ -64,8 +74,10 @@ def csv_to_sql(
             connection.commit()
     f.close()
 
+    return print(f"Sucessfully uploaded {f}")
 
-csv_to_sql("samples/trips_1.csv")
+
+#csv_to_sql("samples/trips_1.csv")
 
 # =================================
 print("--- %s seconds ---" % (time.time() - start_time))
