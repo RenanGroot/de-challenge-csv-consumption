@@ -23,19 +23,19 @@ def csv_to_sql(
         filename(str): New name given to the file received.
     """
     # SQL database connection
-    connection = sqlite3.connect("database/test.db")
+    connection = sqlite3.connect("database/trips.db")
     cur = connection.cursor()
 
     # Checking if table exists
     if cur.execute("SELECT name FROM sqlite_master").fetchone() is None:
         cur.executescript("""
-            CREATE TABLE test(
+            CREATE TABLE trips(
                     id TEXT PRIMARY KEY,
                     region TEXT,
-                    origin_coord_x REAL,
-                    origin_coord_y REAL,
-                    dest_coord_x REAL,
-                    dest_coord_y REAL,
+                    origin_lat REAL,
+                    origin_long REAL,
+                    dest_lat REAL,
+                    dest_long REAL,
                     datetime TEXT,
                     datasource TEXT);
             CREATE TABLE  loading_status(
@@ -48,7 +48,10 @@ def csv_to_sql(
 
     # Updating status table
     date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
-    cur.execute(f"""INSERT INTO loading_status VALUES("{filename}", "Landing_to_Database","{date_status}")""")
+    cur.execute(f"""INSERT INTO loading_status 
+                VALUES("{filename}",
+                  "Landing_to_Database",
+                  "{date_status}")""")
     
     # Opening the file in read mode
     with open(filepath,mode="r") as f:
@@ -60,18 +63,26 @@ def csv_to_sql(
                 continue
             
             # Creating variables holding the data scrapped with regex
-            origin_x = re.search(r"(\d.*)(?= )",row_s[1]).group(1)
-            origin_y = re.search(r"(\d+\.\d+(?=\)$))",row_s[1]).group(1)
-            dest_x = re.search(r"(\d.*)(?= )",row_s[2]).group(1)
-            dest_y = re.search(r"(\d+\.\d+(?=\)$))",row_s[2]).group(1)
+            origin_lat = re.search(r"(\d.*)(?= )",row_s[1]).group(1)
+            origin_long = re.search(r"(\d+\.\d+(?=\)$))",row_s[1]).group(1)
+            dest_lat = re.search(r"(\d.*)(?= )",row_s[2]).group(1)
+            dest_lat = re.search(r"(\d+\.\d+(?=\)$))",row_s[2]).group(1)
 
             # Creating a Unique ID
-            id = origin_x[-5:] + origin_y[-5:] + dest_y[-5:] + dest_x[-5:] + row_s[3][:10]
+            id = origin_lat[-5:] + origin_long[-5:] + dest_lat[-5:] + dest_lat[-5:] + row_s[3][:10]
 
             try:
                 # Inserting rows
                 cur.execute(f"""
-                    INSERT INTO test VALUES("{id}","{row_s[0]}",{origin_x},{origin_y},{dest_x},{dest_y},"{row_s[3]}","{row_s[4]}")
+                    INSERT INTO trips 
+                            VALUES("{id}",
+                            "{row_s[0]}",
+                            {origin_lat},
+                            {origin_long},
+                            {dest_lat},
+                            {dest_lat},
+                            "{row_s[3]}",
+                            "{row_s[4]}")
                     """)
             except:
                 continue
@@ -79,7 +90,11 @@ def csv_to_sql(
 
     # Updating status table
     date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
-    cur.execute(f"""INSERT INTO loading_status VALUES("{filename}", "Finished","{date_status}")""")
+    cur.execute(f"""INSERT INTO loading_status 
+                VALUES("{filename}", 
+                "Finished",
+                "{date_status}"
+                )""")
 
     connection.commit()
     return print(f"Sucessfully uploaded {filename}")
@@ -100,14 +115,53 @@ def check_upload_status(
     """
 
     # SQL database connection
-    connection = sqlite3.connect("database/test.db")
+    connection = sqlite3.connect("database/trips.db")
     cur = connection.cursor()
 
-    result = cur.execute(f"""SELECT status FROM loading_status WHERE filename = '{filename}' ORDER BY datetime DESC LIMIT 1""")
+    result = cur.execute(f"""SELECT status 
+                         FROM loading_status 
+                         WHERE filename = '{filename}' 
+                         ORDER BY datetime DESC LIMIT 1""")
 
+    result = result.fetchall()[0][0]
+
+    return result
+
+def weekly_avg_reg(
+        region:str
+) -> float:
+    """
+    Gives the weekly average number of trips for an area defined by a region.
+
+    Args:
+        region(str): Target region.
+
+    Returns:
+        float: Weekly average trips.
+    """
+
+    # SQL database connection
+    connection = sqlite3.connect("database/trips.db")
+    cur = connection.cursor()
+
+    result = cur.execute(f""" SELECT AVG(trips_count) 
+                FROM 
+                        (select 
+                        region,
+                        strftime('%W', datetime) WeekNumber,
+                        MAX(DATE(datetime, 'weekday 0', '-7 day')) WeekStart,
+                        MAX(DATE(datetime, 'weekday 0', '-1 day')) WeekEnd,
+                        COUNT(*) as trips_count
+                        FROM trips
+                        WHERE region = '{region}'
+                        GROUP BY WeekNumber, region)
+                GROUP BY region;
+                """)
+    
     result = result.fetchall()[0][0]
 
     return result
 
 # =================================
 print("--- %s seconds ---" % (time.time() - start_time))
+
