@@ -1,7 +1,8 @@
 import os
 from flask import *
 from werkzeug.utils import secure_filename
-from aux_functions import csv_to_sql
+from aux_functions import csv_to_sql, check_upload_status
+
 
 UPLOAD_FOLDER = 'landing-files/'
 ALLOWED_EXTENSIONS = {"csv"}
@@ -28,7 +29,7 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             f.save(filepath)
 
-            csv_to_sql(filepath)
+            csv_to_sql(filepath, filename)
 
             return redirect(url_for('upload_status', name=filename))
 
@@ -39,4 +40,7 @@ def upload_file():
 # STATUS UPLOAD
 @app.route('/uploadstatus/<name>')
 def upload_status(name):
-    return "<h1>Foi</h1>"
+    
+    status = check_upload_status(name)
+
+    return f"<h1>The current status: {status}</h1>"

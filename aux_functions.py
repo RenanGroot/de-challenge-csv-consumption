@@ -12,13 +12,15 @@ import datetime
 
 
 def csv_to_sql(
-        file:str
+        filepath:str,
+        filename:str,
 ):
     """
     Reads a csv file and populate the SQL database with its data.
 
     Args:
-        file(str): CSV's filepath.
+        filepath(str): CSV's filepath.
+        filename(str): New name given to the file received.
     """
     # SQL database connection
     connection = sqlite3.connect("database/test.db")
@@ -36,7 +38,7 @@ def csv_to_sql(
                     dest_coord_y REAL,
                     datetime TEXT,
                     datasource TEXT);
-            CREATE TABLE  status(
+            CREATE TABLE  loading_status(
                     filename TEXT,
                     status TEXT,
                     datetime TEXT
@@ -46,10 +48,10 @@ def csv_to_sql(
 
     # Updating status table
     date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
-    cur.execute(f"""INSERT INTO status VALUES("{file}", "Landing_to_Database","{date_status}")""")
+    cur.execute(f"""INSERT INTO loading_status VALUES("{filename}", "Landing_to_Database","{date_status}")""")
     
     # Opening the file in read mode
-    with open(file,mode="r") as f:
+    with open(filepath,mode="r") as f:
         for row in f:
             row_s = row.split(",")
 
@@ -77,7 +79,29 @@ def csv_to_sql(
     return print(f"Sucessfully uploaded {f}")
 
 
-#csv_to_sql("samples/trips_1.csv")
+
+def check_upload_status(
+        filename:str
+)-> str:
+    """
+    Returns the upload status given a file name.
+
+    Args:
+        filename: Filename, same as it was used on the upload
+    
+    Returns:
+        str: Upload Status(Landing_to_Database, Done)
+    """
+
+    # SQL database connection
+    connection = sqlite3.connect("database/test.db")
+    cur = connection.cursor()
+
+    result = cur.execute(f"""SELECT status FROM loading_status WHERE filename = '{filename}' ORDER BY datetime LIMIT 1""")
+
+    result = result.fetchall()[0][0]
+
+    return result
 
 # =================================
 print("--- %s seconds ---" % (time.time() - start_time))
