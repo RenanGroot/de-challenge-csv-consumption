@@ -66,17 +66,23 @@ def csv_to_sql(
             dest_y = re.search(r"(\d+\.\d+(?=\)$))",row_s[2]).group(1)
 
             # Creating a Unique ID
-            id = origin_x[-5:] + origin_y[-5:] + dest_y[-5:] + dest_x[-5:]
+            id = origin_x[-5:] + origin_y[-5:] + dest_y[-5:] + dest_x[-5:] + row_s[3][:10]
 
-            # Inserting rows
-            cur.execute(f"""
-                INSERT INTO test VALUES("{id}","{row_s[0]}",{origin_x},{origin_y},{dest_x},{dest_y},"{row_s[3]}","{row_s[4]}")
-                """)
-            
-            connection.commit()
+            try:
+                # Inserting rows
+                cur.execute(f"""
+                    INSERT INTO test VALUES("{id}","{row_s[0]}",{origin_x},{origin_y},{dest_x},{dest_y},"{row_s[3]}","{row_s[4]}")
+                    """)
+            except:
+                continue
     f.close()
 
-    return print(f"Sucessfully uploaded {f}")
+    # Updating status table
+    date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+    cur.execute(f"""INSERT INTO loading_status VALUES("{filename}", "Finished","{date_status}")""")
+
+    connection.commit()
+    return print(f"Sucessfully uploaded {filename}")
 
 
 
@@ -97,7 +103,7 @@ def check_upload_status(
     connection = sqlite3.connect("database/test.db")
     cur = connection.cursor()
 
-    result = cur.execute(f"""SELECT status FROM loading_status WHERE filename = '{filename}' ORDER BY datetime LIMIT 1""")
+    result = cur.execute(f"""SELECT status FROM loading_status WHERE filename = '{filename}' ORDER BY datetime DESC LIMIT 1""")
 
     result = result.fetchall()[0][0]
 
