@@ -1,13 +1,22 @@
 **Table of Contents**
+- [Introduction](#introduction)
+    - [Task](#task)
+- [Main Features](#main-features)
+- [How to execute](#how-to-execute)
+- [Endpoints Documentation](#endpoints-documentation)
+    - [Upload CSV files](#upload-csv-files)
+    - [Upload status check](#upload-status-check)
+    - [Weekly average](#weekly-average)
+
 
 # Introduction
 This repository was created as a delivery to a Data Engineering Challenge. The task and the solution are better explained below:
-## Task/ Problem
+## Task
 > Your task is to build an automatic process to ingest data on an on-demand basis. The data represents trips taken by different vehicles, and include a city, a point of origin and a destination.
 > 
 > We do not need a graphical interface. Your application should preferably be a REST API, or a
 console application.
-Draw a brief model of how it is working.
+
 
 # Main Features
 - **Upload CSV files to Database. (API endpoint)**
@@ -60,7 +69,7 @@ flask run
 
 ## Upload CSV files
 <details>
-  <summary> Upload (POST)(file) </summary>
+  <summary> Upload CSV(POST)(file) </summary>
   <br>
  
   | Method | Feature | URL |
@@ -68,8 +77,36 @@ flask run
   | `POST` | Upload a csv file to database | `127.0.0.1:5000/`
 
   Attached to your request, you should send a file ´.csv´. If you face some issues trying to reach the endpoint directly though a request, you also can access thought GET method the same endpoint using a browser. This last option is going to allow you to use a simple UI to send the csv file.
+  This endpoint returns the string: `"Reachout: 127.0.0.1:5000/uploadstatus/{filename} for checking the current status"`, where `{filename}` is the name of the uploaded file. With that url you can check the upload status.
 
 </details>
 
-# de-challenge-csv-consumption
- This is a repository for a Data Engineering Challenge, envolving the .csv comsumption and distribuition by REST API
+## Upload status check
+<details>
+  <summary> Upload Status(GET) </summary>
+  <br>
+ 
+  | Method | Feature | URL |
+  |---|---|---|
+  | `GET` | Get the upload status from a upload using the "Upload CSV files" endpoint | `127.0.0.1:5000/uploadstatus/{filename}`
+
+    You should include the filename, used in the upload step, as a variable in the `{filename}` url's part.
+    For example: If you uploaded a file named `trips_1.csv`, then you should request in the url `127.0.0.1:5000/uploadstatus/trips_1.csv`
+
+</details>
+
+## Weekly average
+<details>
+  <summary> Weekly average trips(GET) </summary>
+  <br>
+ 
+  | Method | Feature | URL |
+  |---|---|---|
+  | `GET` | obtain the weekly average number of trips for an area, defined by a bounding box or by a region. | `127.0.0.1:5000/weekly_avg_calc?region={region}` OR `127.0.0.1:5000/weekly_avg_calc?lat1={lat1}&long1={long1}&lat2={lat2}&long2={long2}`|
+<br>
+    There are two possibles consulting to this endpoint, one using the region and another using the bounding box:<br>
+    Using the region: for this you should include the parameter <code>region={region}</code>, where <code>{region}</code> should be the region that you are interested; For example:<code>127.0.0.1:5000/weekly_avg_calc?region=Hamburg</code><br>
+    Using the bounding box: for this you should include the parameters <code>lat1={lat1}&long1={long1}&lat2={lat2}&long2={long2}</code>. Where <code>{lat1}{long1}</code> should be the coordinates from the first point; and <code>{lat2}{long2}</code> should be the coordinates from the second point. Final example:<code>127.0.0.1:5000/weekly_avg_calc?lat1=10.000&long1=10.000&lat2=90.000}&long2=90.000</code>
+
+</details>
+
