@@ -50,7 +50,7 @@ def csv_to_sql(
     date_status = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     cur.execute(f"""INSERT INTO loading_status 
                 VALUES("{filename}",
-                  "Landing_to_Database",
+                  "Uploading",
                   "{date_status}")""")
     
     # Opening the file in read mode
@@ -66,10 +66,11 @@ def csv_to_sql(
             origin_lat = re.search(r"(\d.*)(?= )",row_s[1]).group(1)
             origin_long = re.search(r"(\d+\.\d+(?=\)$))",row_s[1]).group(1)
             dest_lat = re.search(r"(\d.*)(?= )",row_s[2]).group(1)
-            dest_lat = re.search(r"(\d+\.\d+(?=\)$))",row_s[2]).group(1)
+            dest_long = re.search(r"(\d+\.\d+(?=\)$))",row_s[2]).group(1)
 
             # Creating a Unique ID
-            id = origin_lat[-5:] + origin_long[-5:] + dest_lat[-5:] + dest_lat[-5:] + row_s[3][:10]
+            # ID = (last 5 digits from:[ origin_lat, origin_long, dest_lat, dest_long]) + first 10 chractes from datetime
+            id = origin_lat[-5:] + origin_long[-5:] + dest_lat[-5:] + dest_long[-5:] + row_s[3][:10]
 
             try:
                 # Inserting rows
@@ -80,7 +81,7 @@ def csv_to_sql(
                             {origin_lat},
                             {origin_long},
                             {dest_lat},
-                            {dest_lat},
+                            {dest_long},
                             "{row_s[3]}",
                             "{row_s[4]}")
                     """)
@@ -111,7 +112,7 @@ def check_upload_status(
         filename: Filename, same as it was used on the upload
     
     Returns:
-        str: Upload Status(Landing_to_Database, Done)
+        str: Upload Status(Uploading, Done)
     """
 
     # SQL database connection
@@ -156,6 +157,50 @@ def weekly_avg_reg(
                         WHERE region = '{region}'
                         GROUP BY WeekNumber, region)
                 GROUP BY region;
+                """)
+    
+    result = result.fetchall()[0][0]
+
+    return result
+
+def weekly_avg_box(
+        lat1:str,
+        long1:str,
+        lat2:str,
+        long2:str
+    ) -> float:
+    """
+    Gives the weekly average number of trips for an area defined by a region.
+
+    Args:
+        lat(str): Latitude point 1.
+        long1(str): Longitude point 1.
+        lat2(str): Latitude point 2.
+        long2(str): Longitude point 2.
+
+    Returns:
+        float: Weekly average trips.
+    """
+    lat_min = min(lat1, lat2)
+    lat_max = max(lat1, lat2)
+    long_min = min(long1, long2)
+    long_max = max(long1, long2)
+
+    # SQL database connection
+    connection = sqlite3.connect("database/trips.db")
+    cur = connection.cursor()
+
+    result = cur.execute(f""" SELECT AVG(trips_count) 
+                FROM 
+                        (select 
+                        strftime('%W', datetime) WeekNumber,
+                        MAX(DATE(datetime, 'weekday 0', '-7 day')) WeekStart,
+                        MAX(DATE(datetime, 'weekday 0', '-1 day')) WeekEnd,
+                        COUNT(*) as trips_count
+                        FROM trips
+                        WHERE origin_lat BETWEEN {lat_min} AND {lat_max}
+                        AND origin_long BETWEEN {long_min} AND {long_max}
+                        GROUP BY WeekNumber);
                 """)
     
     result = result.fetchall()[0][0]

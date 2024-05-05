@@ -1,7 +1,7 @@
 import os
 from flask import *
 from werkzeug.utils import secure_filename
-from aux_functions import csv_to_sql, check_upload_status, weekly_avg_reg
+from aux_functions import csv_to_sql, check_upload_status, weekly_avg_reg, weekly_avg_box
 
 
 UPLOAD_FOLDER = 'landing-files/'
@@ -45,23 +45,23 @@ def upload_status(name):
     
     status = check_upload_status(name)
 
-    return f"<h1>The current status: {status}</h1>"
+    return status
 
-#TODO
-# Calculate boxing by taking the smaller value and using that as the bondaries to create the region
-@app.route("/query")
+
+
+@app.route("/weekly_avg_calc")
 def query_data():
     if request.args.get("region"):
         region = request.args.get("region")
         average = weekly_avg_reg(region)
         return str(average)
 
+    # Getting variables from URL
     else:
         lat1 = request.args.get("lat1")
         lat2 = request.args.get("lat2")
         long1 = request.args.get("long1")
         long2 = request.args.get("long2")
-        lat_min = min(lat1, lat2)
-        lat_max = max(lat1, lat2)
-        long_min = min(long1, long2)
-        long_max = max(long1, long2)
+
+        average = weekly_avg_box(lat1,long1,lat2,long2)
+        return str(average)
